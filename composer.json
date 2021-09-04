@@ -1,0 +1,9 @@
+{
+    "require": {
+        "swlib/saber": "^1.0",
+        "illuminate/support": "^8.56"
+    },
+    "require-dev": {
+        "eaglewu/swoole-ide-helper": "dev-master"
+    }
+}
