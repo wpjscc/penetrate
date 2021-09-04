@@ -33,7 +33,7 @@ php proxy_server.php
 
 简单的后台运行
 ```
-nohup php proxy_server.php
+nohup php proxy_server.php &
 ```
 
 关闭服务端
