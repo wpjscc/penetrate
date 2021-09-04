@@ -18,6 +18,7 @@ pcel install swoole
 ```
 php proxy_client.php
 ```
+[http://127.0.0.1:7400](http://127.0.0.1:7400)
 
 ![](./WechatIMG585.png)
 
