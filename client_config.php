@@ -12,8 +12,8 @@ echo "visit:http://{$domain}:9503\n";
 echo "Local:listen:http://127.0.0.1:7400\n";
 
 return [
-    // 'server_addr'=>'127.0.0.1',
-    'server_addr'=>'47.96.15.116',
+    'server_addr'=>'127.0.0.1',
+    // 'server_addr'=>'47.96.15.116',
     // 'server_port'=>8080,
     'server_port'=>9502,
     'admin_addr' => '127.0.0.1',

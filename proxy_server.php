@@ -11,6 +11,9 @@ use function Swoole\Coroutine\go;
 use Swoole\Coroutine as Co;
 use function Swlib\Http\parse_response;
 use function Swlib\Http\parse_request;
+use Swoole\Process;
+use Swoole\Coroutine;
+use Swoole\Coroutine\Server\Connection;
 
 global $wsObjects;//websocket
 global $wsObjectConfigs;//配置
@@ -22,7 +25,7 @@ global $httpToTunnelWs;
 global $httpStatusToServerClient;
 $httpStatusToServerClient=[];
 
-ini_set('date.timezone','Asia/Shanghai');
+ini_set('date.timezone', 'Asia/Shanghai');
 
 $serverWsObjects=[];//服务端 client->server(server)
 
@@ -149,7 +152,42 @@ class MyApp
      * @param [type] $requestId
      * @return void
      */
-    public function createProxy($ws, $requestId, $localIp, $localPort,$host)
+    public function createProxy($ws, $requestId, $localIp, $localPort, $host)
+    {
+        $proxyClientId = uniqid();
+        echo "time:".microtime(true).'-'."createProxy:".$proxyClientId."\n";
+
+        eventStart('MyApp', [
+            'time' => microtime(true),
+            'event' => 'createProxy',
+            'uniqid' => $proxyClientId,
+            'content' => $host
+        ]);
+
+        $ws->push(json_encode([
+            'event' => 'system',
+            'data' => [
+                'event' => 'createProxy',
+                'data' => [
+                    'request_id'=>$requestId,
+                    'local_ip'=> $localIp,
+                    'local_port'=> $localPort,
+                    'proxy_client_id'=> $proxyClientId,
+                    'uniqid' => $proxyClientId,
+                    'host' => $host,
+
+                ]
+            ]
+        ]));
+    }
+    /**
+     * server->createProxy
+     *
+     * @param [type] $ws
+     * @param [type] $requestId
+     * @return void
+     */
+    public function createTcpProxy($ws, $requestId, $localIp, $localPort, $host)
     {
         $proxyClientId = uniqid();
         echo "time:".microtime(true).'-'."createProxy:".$proxyClientId."\n";
@@ -242,7 +280,7 @@ class MyAppProxy
      * @param [type] $data
      * @return void
      */
-    public function proxyLocalRequest($w,$message)
+    public function proxyLocalRequest($w, $message)
     {
         eventStart('MyAppProxy', [
             'time' => microtime(true),
@@ -377,8 +415,7 @@ class MyAppProxy
         // exit();
         foreach ($headers as $key=> $value) {
             // echo "{$key}:".$proxyReponse->getHeaderLine($key)."123\n";
-            $response->header($key, $value,true);
-
+            $response->header($key, $value, true);
         }
         
         // var_dump($response);
@@ -388,14 +425,247 @@ class MyAppProxy
         // exit();
         // $response->status($proxyReponse->getStatusCode());
 
-        if($proxyReponse->getStatusCode()==302){
+        if ($proxyReponse->getStatusCode()==302) {
             var_dump((string)$proxyReponse);
             var_dump($headers);
             // exit();
         }
 
         $response->status($proxyReponse->getStatusCode());
-        if((string)$proxyReponse->getBody()){
+        if ((string)$proxyReponse->getBody()) {
+            $response->write($proxyReponse->getBody());
+        }
+        $response->end();
+
+        eventSuccess('MyAppProxy', [
+            'time' => microtime(true),
+            'event' => 'proxyReponse',
+            'uniqid' => $message['uniqid'],
+            'content' => (string) $proxyReponse
+        ]);
+        echo "time:".microtime(true).'-'."proxyReponse:{$ws->proxy_client_id}\n";
+
+        unset($httpObjects[$ws->request_id]);
+        unset($tunnelWsObjects[$ws->objectId]);
+        unset($httpToTunnelWs[$ws->request_id]);
+        // $response->end($message['content']);
+        $ws->close();
+    }
+
+    public function proxyException($res, $ws, $message)
+    {
+        global $httpObjects;
+        global $tunnelWsObjects;
+        global $httpToTunnelWs;
+        $http = $httpObjects[$ws->request_id];
+        eventFail('MyAppProxy', [
+            'time' => microtime(true),
+            'event' => 'proxyRequest',
+            'uniqid' => $message['uniqid'],
+            'content' => $message['content'],
+        ]);
+        $response = $http['response'];
+        $response->end($message['content']);
+
+        unset($httpObjects[$ws->request_id]);
+        unset($tunnelWsObjects[$ws->objectId]);
+        unset($httpToTunnelWs[$ws->request_id]);
+
+        $ws->close();
+    }
+}
+
+class MyAppTcpProxy
+{
+    public function onMessage($res, $ws, $message)
+    {
+        $message = json_decode($message, true);
+
+        $event = data_get($message, 'event');
+        $data = data_get($message, 'data');
+
+        if ($event&&$data) {
+            if (method_exists($this, $event)) {
+                call_user_func([$this,$event], $res, $ws, $data);
+            }
+        }
+    }
+
+    public function client($res, $ws, $message)
+    {
+        //todo 处理一些前置事件
+        echo "ProxyEvent:client\n";
+        $event = data_get($message, 'event');
+        $data = data_get($message, 'data');
+        if ($event&&$data) {
+            echo "ProxyEvent:client:$event\n";
+            if (method_exists($this, $event)) {
+                call_user_func([$this,$event], $res, $ws, $data);
+            }
+        }
+        //todo 处理一些后置事件
+    }
+
+    /**
+     * 浏览器请求
+     *
+     * @param [type] $w
+     * @param [type] $data
+     * @return void
+     */
+    public function proxyLocalRequest($w, $message)
+    {
+        eventStart('MyAppProxy', [
+            'time' => microtime(true),
+            'event' => 'proxyRequest',
+            'uniqid' => $message['uniqid'],
+            'content' => $message['content'],
+            'extra' => [
+                'local_port' => $message['local_port'],
+                'local_ip' => $message['local_ip'],
+                'proxy_client_id'=>$message['proxy_client_id'],
+                'request_id'=>$message['request_id'],
+                'host'=>$message['host'],
+            ]
+        ]);
+
+        //todo server->client 新建一条通道
+    }
+
+    /**
+     * proxyClient->AppProxy
+     *
+     * @param [type] $res
+     * @param [type] $ws
+     * @param [type] $message
+     * @return void
+     */
+    public function proxyRequest($res, $ws, $message)
+    {
+        global $httpObjects;
+        global $httpToTunnelWs;
+
+
+        
+        $proxyClientId = $message['proxy_client_id'];
+        $requestId = $message['request_id'];
+        $ws->proxy_client_id = $proxyClientId;
+        $ws->request_id = $requestId;
+
+        $httpToTunnelWs[$requestId]=$proxyClientId;
+
+        //todo send
+        $http = $httpObjects[$requestId];
+
+        $request = $http['request'];
+        $response = $http['response'];
+
+        eventSuccess('MyApp', [
+            'time' => microtime(true),
+            'event' => 'createProxy',
+            'uniqid' => $message['uniqid'],
+            'content' => $message['host']
+        ]);
+
+        eventStart('MyAppProxy', [
+            'time' => microtime(true),
+            'event' => 'proxyRequest',
+            'uniqid' => $message['uniqid'],
+            'content' => $request->getData(),
+            'extra' => [
+                'local_port' => $message['local_port'],
+                'local_ip' => $message['local_ip'],
+                'proxy_client_id'=>$proxyClientId,
+                'request_id'=>$requestId,
+                'host'=>$message['host'],
+            ]
+        ]);
+
+        //todo 将http请求内容发送至客户端
+        echo "time:".microtime(true).'-'."proxyRequest:{$proxyClientId}\n";
+        $ws->push(json_encode([
+            'event' => 'system',
+            'data'=>[
+                'event' =>'receiveRequest',
+                'data' =>[
+                    'content'=> base64_encode($request->getData()),
+                    'local_port' => $message['local_port'],
+                    'local_ip' => $message['local_ip'],
+                    'proxy_client_id'=>$proxyClientId,
+                    'request_id'=>$requestId,
+                    'uniqid'=>$message['uniqid'],
+                    'host'=>$message['host'],
+                ]
+            ]
+        ]));
+        // var_dump($request->getData());
+        // exit();
+    }
+    public function proxyReponse($res, $ws, $message)
+    {
+        global $httpObjects;
+        global $tunnelWsObjects;
+        global $httpToTunnelWs;
+        $http = $httpObjects[$ws->request_id];
+        $response = $http['response'];
+        eventSuccess('MyAppProxy', [
+            'time' => microtime(true),
+            'event' => 'proxyRequest',
+            'uniqid' => $message['uniqid'],
+        ]);
+
+        eventStart('MyAppProxy', [
+            'time' => microtime(true),
+            'event' => 'proxyReponse',
+            'uniqid' => $message['uniqid'],
+        ]);
+
+        try {
+            $proxyReponse = parse_response(base64_decode($message['content']));
+        } catch (Exception $e) {//返回的信息不符合规范
+            $response->end($e->getMessage);
+            $ws->close();
+            unset($httpObjects[$ws->request_id]);
+            unset($tunnelWsObjects[$ws->objectId]);
+            unset($httpToTunnelWs[$ws->request_id]);
+            eventFail('MyAppProxy', [
+                'time' => microtime(true),
+                'event' => 'proxyReponse',
+                'uniqid' => $message['uniqid'],
+                'content' => $e->getMessage
+            ]);
+            return;
+        }
+
+
+        $headers = $proxyReponse->getHeaders();
+        // $cookies = $proxyReponse->getCookies();
+
+        // var_dump($cookies);
+        // $body = (string)$proxyReponse->getBody();
+        // var_dump($headers);
+        // var_dump(strlen($body));
+        // exit();
+        foreach ($headers as $key=> $value) {
+            // echo "{$key}:".$proxyReponse->getHeaderLine($key)."123\n";
+            $response->header($key, $value, true);
+        }
+        
+        // var_dump($response);
+        // exit();
+        // var_dump($res->getStatusCode());
+        // var_dump((string)$proxyReponse->getBody());
+        // exit();
+        // $response->status($proxyReponse->getStatusCode());
+
+        if ($proxyReponse->getStatusCode()==302) {
+            var_dump((string)$proxyReponse);
+            var_dump($headers);
+            // exit();
+        }
+
+        $response->status($proxyReponse->getStatusCode());
+        if ((string)$proxyReponse->getBody()) {
             $response->write($proxyReponse->getBody());
         }
         $response->end();
@@ -445,6 +715,10 @@ global $myAppProxy;
 if (!isset($myAppProxy)) {
     $myAppProxy = new MyAppProxy();
 }
+global $myAppTcpProxy;
+if (!isset($myAppProxy)) {
+    $myAppTcpProxy = new MyAppTcpProxy();
+}
 run(function () {
     Swoole\Timer::tick(5000, function () {
         echo '运行内存：'.round(memory_get_usage()/1024/1024, 2)."MB\n";
@@ -457,12 +731,12 @@ run(function () {
         global $serverWsObjects;
         global $httpStatusToServerClient;
         
-        while(true){
-            if(empty($serverWsObjects)){
+        while (true) {
+            if (empty($serverWsObjects)) {
                 // echo "55555555\n";
                 $httpStatusToServerClient = [];
-            }else{
-                foreach ($serverWsObjects as $serverWs){
+            } else {
+                foreach ($serverWsObjects as $serverWs) {
                     $serverWs->push(json_encode([
                         'event' => 'system',
                         'data' => [
@@ -478,13 +752,11 @@ run(function () {
                             ]
                         ]
                     ]));
-
                 }
                 echo "getStatus\n";
                 $httpStatusToServerClient = [];
             }
             Co::sleep(2);
-            
         }
     });
     go(function () {
@@ -622,7 +894,7 @@ run(function () {
         $server->handle('/', function (Request $request, Response $response) {
             global $config;
             $response->header('Content-Type', 'text/html; charset=UTF-8');
-            $response->end(str_replace('127.0.0.1',$config['server_addr'],file_get_contents('./index.html')) );
+            $response->end(str_replace('127.0.0.1', $config['server_addr'], file_get_contents('./index.html')));
         });
     
 
@@ -737,7 +1009,7 @@ run(function () {
     go(function () {// http 服务
         global $config;
 
-        $server = new Server('0.0.0.0', $config['vhost_http_port'], false,true);
+        $server = new Server('0.0.0.0', $config['vhost_http_port'], false, true);
         $server->handle('/', function (Request $request, Response $response) {
             global $wsObjects;
             global $httpObjects;
@@ -791,7 +1063,7 @@ run(function () {
                     // var_dump($localPort);
                     // var_dump($host);
                     if ($localIp&&$localPort&&in_array($host, $custom_domains)) {//todo 客户端custom_domains白名单
-                        $myApp->createProxy($ws, $objectId, $localIp, $localPort,$host);
+                        $myApp->createProxy($ws, $objectId, $localIp, $localPort, $host);
 
                         return;
                         break 2;
@@ -805,6 +1077,47 @@ run(function () {
     
             // $response->end("<h1>Swoole hello</h1><pre><code>".json_encode(array_keys($wsObjects))."</code></pre>");
         });
+        $server->start();
+    });
+
+    //tcp 服务
+    go(function () {
+
+        global $config;
+    //每个进程都监听9504端口
+        $server = new Swoole\Coroutine\Server('0.0.0.0', $config['tcp_port'], false, false);
+
+        //收到15信号关闭服务
+        Process::signal(SIGTERM, function () use ($server) {
+            $server->shutdown();
+        });
+        var_dump('-----------tcp_port------------'.$config['tcp_port']."\n");
+        //接收到新的连接请求 并自动创建一个协程
+        $server->handle(function (Connection $conn) {
+            var_dump($conn->exportSocket());
+            var_dump($conn->exportSocket()->getsockname());
+            var_dump($conn->exportSocket()->getpeername());
+
+            while (true) {
+                //接收数据
+                $data = $conn->recv();
+
+                if ($data === '' || $data === false) {
+                    $errCode = swoole_last_error();
+                    $errMsg = socket_strerror($errCode);
+                    echo "errCode: {$errCode}, errMsg: {$errMsg}\n";
+                    $conn->close();
+                    break;
+                }
+                // var_dump($conn->exportSocket());
+                //发送数据
+                $conn->send('hello');
+
+                // Coroutine::sleep(1);
+            }
+        });
+
+        //开始监听端口
         $server->start();
     });
 });
