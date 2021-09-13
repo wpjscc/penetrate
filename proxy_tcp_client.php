@@ -13,8 +13,6 @@ use Swoole\WebSocket\Frame;
 use function Swlib\Http\parse_request;
 use Swoole\Coroutine as Co;
 
-
-
 $config = require_once __DIR__ . '/client_config.php';
 
 
@@ -29,10 +27,13 @@ global $myClientProxy;
 global $wsObjects;
 global $wsObjectConfigs;
 
+global $tcpObjects;
+
 $wsObjectConfigs=[];
 $wsObjects=[];
 $tunnelWsObjects=[];
 $httpObjects = [];
+$tcpObjects = [];
 //监听状态
 global $httpStatusToServerClient;
 $httpStatusToServerClient=[];
@@ -242,6 +243,7 @@ class MyClient
         go(function () use ($ws, $data, $time) {
             global $myClientProxy;
             global $config;
+            global $tcpObjects;
             eventStart('MyClient', [
                 'time' => microtime(true),
                 'event' => 'createTcpProxy',
@@ -284,7 +286,7 @@ class MyClient
 
             //todo connect local_ip and local_port  $data 里有要链接的本地ip和端口
 
-            echo "time:".microtime(true).'-'."createProxy:".$data['proxy_client_id']."\n";
+            echo "time:".microtime(true).'-'."createTcpProxy:".$data['proxy_client_id']."\n";
 
             $objectId = spl_object_id($websocket);
             $websocket->objectId = $objectId;
@@ -296,7 +298,7 @@ class MyClient
             $websocket->push(json_encode([
                 'event'=>'client',
                 'data' => [
-                    'event' =>'proxyRequest',
+                    'event' =>'proxyTcpRequest',
                     'data'=>[
                         'request_id'=>$data['request_id'],
                         'proxy_client_id'=>$data['proxy_client_id'],
@@ -310,23 +312,28 @@ class MyClient
             ]));
             eventSuccess('MyClient', [
                 'time' => microtime(true),
-                'event' => 'createProxy',
+                'event' => 'createTcpProxy',
                 'uniqid' => $data['uniqid'],
                 'content' => $data['host']
             ]);
             while (true) {
                 if ($websocket->client->getStatusCode()>0) {
-                    $data = $websocket->recv(2);
+                    $data = $websocket->recv();
                     // echo 'AppClientProxy:recv: ' . $data . "\n";
                     // var_dump($data);
                     if ($data) {
                         $myClientProxy->onMessage($websocket, $data);
                     }
                 } else {
-                    echo "time:".microtime(true).'-'."ProxyClient:{$websocket->objectId}-{$websocket->request_id}-{$websocket->proxy_client_id}-close\n";
+                    echo "time:".microtime(true).'-'."ProxyTcpClient:{$websocket->objectId}-{$websocket->request_id}-{$websocket->proxy_client_id}-close\n";
                     unset($tunnelWsObjects[$websocket->objectId]);
 
                     unset($httpToTunnelWs[$websocket->request_id]);
+                    if(isset($tcpObjects[$websocket->request_id])){
+                        $tcpObjects[$websocket->request_id]->close();
+                    }
+                    unset($tcpObjects[$websocket->request_id]);
+                    
                     break;
                 }
             }
@@ -526,9 +533,247 @@ class MyClientProxy
             //  exit();
 
             return ;
+        });
+    }
+    /**
+    * server->prosyClient(event)
+    *
+    * @param [type] $ws
+    * @param [type] $message
+    * @return void
+    */
+    public function receiveTcpRequest($ws, $message, $local = false)
+    {
+        
+        // var_dump($message['data']);
+        go(function () use ($ws, $message, $local) {
+            
+            $httpObjects[$message['uniqid']] = 1;
+            echo "time:".microtime(true).'-'."receiveTcpRequest:".$message['proxy_client_id']."\n";
+
+            $content = base64_decode($message['content']);
+
+            eventStart('MyClientProxy', [
+                'time' => microtime(true),
+                'event' => 'proxyTcpRequest',
+                'uniqid' => $message['uniqid'],
+                'content' => $content,
+                'extra'=>[
+                    'local_ip'=>$message['local_ip'],
+                    'local_port'=>$message['local_port'],
+                    'proxy_client_id'=>$message['proxy_client_id'],
+                    'host'=>$message['host'],
+                ]
+            ]);
 
 
+        
+            
+            try {
+                eventSuccess('MyClientProxy', [
+                    'time' => microtime(true),
+                    'event' => 'proxyTcpRequest',
+                    'uniqid' => $message['uniqid'],
+                ]);
+                eventStart('MyClientProxy', [
+                    'time' => microtime(true),
+                    'event' => 'proxyTcpReponse',
+                    'uniqid' => $message['uniqid'],
+                ]);
+              
+                if(isset($tcpObjects[$ws->request_id])){
+                    $client = $tcpObjects[$ws->request_id];
+                    $client->send($content);//后几次请求
+                    return ;
+                }else{
+                    $client = new Client(SWOOLE_SOCK_TCP);
+                    if (!$client->connect($message['local_ip'], $message['local_port'], 0.5)) {
+                        echo "connect failed. Error: {$client->errCode}\n";
+                        if (!$local) {
+                            $ws->close();
+                            $client->close();
+                            return ;
+                        }
+                    }
+                    global $tcpObjects;
+                    $tcpObjects[$ws->request_id] = $client;
+                }
+                
+                if($content){
+                    $client->send($content);//第一次请求
+                }
 
+                
+                while (true) {
+                    $data = $client->recv();
+                    $response = $data;
+                    if (strlen($data) > 0) {//可能发送多次
+                        // echo $data;
+                        // $client->send(time() . PHP_EOL);
+                        try {
+                            if (!$local) {
+                                $ws->push(json_encode([
+                                    'event' => 'client',
+                                    'data'=>[
+                                        'event' =>'proxyTcpReponse',
+                                        'data'=>[
+                                            'content'=> base64_encode($response),
+                                            'uniqid' => $message['uniqid'],
+                                            'host' => $message['host']
+                                        ]
+                                    ]
+                                ]));
+                            }
+                            
+                            eventSuccess('MyClientProxy', [
+                                'time' => microtime(true),
+                                'event' => 'proxyTcpReponse',
+                                'uniqid' => $message['uniqid'],
+                                'content' => $response
+                            ]);
+                            // unset($httpObjects[$message['uniqid']]);
+                        } catch (Exception $e) {
+                            unset($httpObjects[$message['uniqid']]);
+                            eventFail('MyClientProxy', [
+                                'time' => microtime(true),
+                                'event' => 'proxyTcpReponse',
+                                'uniqid' => $message['uniqid'],
+                                'content' => 'error: '.$e->getMessage()
+                            ]);
+                            echo 'error: '.$e->getMessage();
+                            $client->close();
+                            $ws->close();
+                            break;
+                        }
+                    } else {
+                        if ($data === '') {
+                            // 全等于空 直接关闭连接
+                            $client->close();
+                            $ws->close();
+                            unset($httpObjects[$message['uniqid']]);
+                            unset($tcpObjects[$ws->request_id]);
+                            break;
+                        } else {
+                            if ($data === false) {
+                                // 可以自行根据业务逻辑和错误码进行处理，例如：
+                                // 如果超时时则不关闭连接，其他情况直接关闭连接
+                                if ($client->errCode !== SOCKET_ETIMEDOUT) {
+                                    $client->close();
+                                    $ws->close();
+                                    unset($httpObjects[$message['uniqid']]);
+                                    unset($tcpObjects[$ws->request_id]);
+
+                                    break;
+                                }
+                            } else {
+                                $ws->close();
+                                $client->close();
+                                unset($httpObjects[$message['uniqid']]);
+                                unset($tcpObjects[$ws->request_id]);
+
+                                break;
+                            }
+                        }
+                    }
+                    Co::sleep(1);
+                }
+            } catch (Exception $e) {
+                if (!$local) {
+                    $ws->push(json_encode([
+                        'event'=>'client',
+                        'data' => [
+                            'event' =>'proxyException',
+                            'data'=>[
+                                'request_id'=>$message['request_id'],
+                                'uniqid'=>$message['uniqid'],
+                                'content'=> "Local proxyException. Error:".$e->getMessage()
+                            ]
+                           
+                        ]
+                    ]));
+                }
+                
+                eventFail('MyClientProxy', [
+                    'time' => microtime(true),
+                    'event' => 'proxyTcpReponse',
+                    'uniqid' => $message['uniqid'],
+                    'content' => "Local proxyException. Error:".$e->getMessage()
+                ]);
+                unset($httpObjects[$message['uniqid']]);
+
+                // unset($httpObjects[$message['uniqid']]);
+                unset($tcpObjects[$ws->request_id]);
+                return ;
+            }
+            
+            return ;
+           
+            // $cks = $response->cookies->toResponse();
+
+            // if (!empty($cks)) {
+            //     $response->withoutHeader('Set-Cookie');
+            // }
+            // foreach ($cks as $ck) {
+            //     $response->withAddedHeader('Set-Cookie', str_replace($message['local_ip'], $message['host'], $ck));
+            // }
+
+            // if ($response->getStatusCode() == 302) {
+            // } else {
+            // }
+            
+            // if (!empty($response->getRedirectHeaders())) {
+            // }
+            // if ($method == 'POST') {
+            //     if ($response->getStatusCode()==200) {
+            //     }
+            // }
+
+            // if ($response->hasHeader('set-cookie')) {
+            // }
+            $response = '';
+            
+            try {
+                if (!$local) {
+                    $ws->push(json_encode([
+                    'event' => 'client',
+                    'data'=>[
+                        'event' =>'proxyTcpReponse',
+                        'data'=>[
+                            'content'=> base64_encode($response),
+                            'uniqid' => $message['uniqid'],
+                            'host' => $message['host']
+                        ]
+                    ]
+                ]));
+                }
+                
+                eventSuccess('MyClientProxy', [
+                    'time' => microtime(true),
+                    'event' => 'proxyTcpReponse',
+                    'uniqid' => $message['uniqid'],
+                    'content' => (string)$response
+                ]);
+                unset($httpObjects[$message['uniqid']]);
+            } catch (Exception $e) {
+                unset($httpObjects[$message['uniqid']]);
+                eventFail('MyClientProxy', [
+                    'time' => microtime(true),
+                    'event' => 'proxyTcpReponse',
+                    'uniqid' => $message['uniqid'],
+                    'content' => 'error: '.$e->getMessage()
+                ]);
+                echo 'error: '.$e->getMessage();
+            }
+            
+            echo "time:".microtime(true).'-'."proxyReponse:".$message['proxy_client_id']."\n";
+
+            // var_dump(33333);
+            if (!$local) {
+                $ws->close();
+            }
+            //  exit();
+
+            return ;
         });
     }
 }
@@ -637,8 +882,8 @@ run(function () {
             }
         });
         $server->handle('/', function (Request $request, Response $response) {
-            if(!isset($request->header['authorization'])){
-                $response->header('www-authenticate', 'Basic',false);
+            if (!isset($request->header['authorization'])) {
+                $response->header('www-authenticate', 'Basic', false);
                 $response->header('Content-Type', 'text/html; charset=UTF-8');
                 $response->status(401);
                 $response->end();
@@ -646,13 +891,13 @@ run(function () {
             }
             global $config;
 
-            $authorization =  explode(':', base64_decode(substr($request->header['authorization'],6)));
+            $authorization =  explode(':', base64_decode(substr($request->header['authorization'], 6)));
             $admin_user = $authorization[0];
             $admin_pwd = $authorization[1];
 
-            if($config['admin_user']!=$admin_user|| $config['admin_pwd']!=$admin_pwd){
+            if ($config['admin_user']!=$admin_user|| $config['admin_pwd']!=$admin_pwd) {
                 $response->header('Content-Type', 'text/html; charset=UTF-8');
-                $response->header('www-authenticate', 'Basic',false);
+                $response->header('www-authenticate', 'Basic', false);
                 $response->status(401);
                 $response->end('账号或密码错误');
                 return;

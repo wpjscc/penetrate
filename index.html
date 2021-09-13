@@ -461,12 +461,12 @@
             <hr style="border:1px solid red">
 
             <div v-for="event in requests[uniqid]">
-            <div v-if="(event.event=='proxyRequest'&&event.status=='start')||(event.event=='proxyReponse'&&event.status=='success')||event.status=='fail'">
+            <div v-if="(event.event=='proxyRequest'&&event.status=='start')||(event.event=='proxyReponse'&&event.status=='success')||event.status=='fail' || event.event.includes('Tcp')">
                 <h2>Time: <span v-text="event.date"></span></h2>
                 <h2>Group:<span v-text="event.group"></span></h2>
                 <h2>Event:<span v-text="event.event"></span></h2>
                 <h2>Status:<span v-text="event.status"></span></h2>
-                <div v-if="event.event=='proxyRequest'&&event.status=='start'">
+                <div v-if="event.event=='proxyRequest'&&event.status=='start'|| event.event.includes('TcpReq')">
                 <div x-data="{open:true}">
 
                     <button x-on:click="open=!open">查看请求</button>
@@ -477,7 +477,7 @@
                 </div>
 
                 </div>
-                <div v-if="event.event=='proxyReponse'&&event.status=='success'">
+                <div v-if="event.event=='proxyReponse'&&event.status=='success'|| event.event.includes('TcpRepon')">
                 <div x-data="{open:false}">
                     
                     <button x-on:click="open=!open">查看响应</button>
