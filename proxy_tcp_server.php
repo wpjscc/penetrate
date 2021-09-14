@@ -140,10 +140,31 @@ class MyApp
 
         //todo 之前验证
         global $wsObjectConfigs;//配置
-
+        global $config;
         $configs = data_get($data, 'configs');
         //todo 验证config
 
+        if(is_array($configs)){
+            foreach($configs as $clientConfig){
+                $type = data_get($clientConfig, 'type');
+                if($type=='tcp'){
+                    $token = data_get($clientConfig, 'token');
+                    $server_port = data_get($clientConfig, 'server_port');
+                    $tokens = data_get($config['tokens'],$server_port, []);
+                    if(in_array($token,$tokens)){//注册成功
+
+
+                    }else{
+                        $ws->close();
+                        return ;
+                    }
+                }
+            }
+        }else{
+            $ws->close();
+            return ;
+        }
+        
         $wsObjectConfigs[$ws->objectId] = $configs;
     }
 
@@ -1128,6 +1149,7 @@ run(function () {
         var_dump('-----------tcp_port------------'.$config['tcp_port']."\n");
         //接收到新的连接请求 并自动创建一个协程
         $server->handle(function (Connection $conn) {
+            global $config;
             global $wsObjects;
             global $httpObjects;
             global $wsObjectConfigs;//配置
@@ -1166,17 +1188,18 @@ run(function () {
                     if ($config['type']!='tcp') {
                         continue;
                     }
-                    $custom_domains = data_get($config, 'custom_domains', []);
+
                     $type = data_get($config, 'type', 'http');
                     $localIp = data_get($config, 'local_ip', '127.0.0.1');
                     $localPort = data_get($config, 'local_port', 80);
-                    $token = data_get($config, 'token', '');
+                    $serverPort = data_get($config, 'server_port');
+
                     // var_dump($config);
                     // var_dump($localIp);
                     // var_dump($localPort);
                     // var_dump($host);
                     $host = '127.0.0.1';
-                    if ($localIp&&$localPort&&in_array($token,$config['tokens'])) {//todo token 和localIp 一一对应
+                    if ($localIp&&$localPort&&$serverPort==$config['tcp_port']) {//todo token 和localIp 一一对应
                         $myApp->createTcpProxy($ws, $objectId, $localIp, $localPort, $host);
 
                         // return;
