@@ -1273,15 +1273,15 @@ run(function () {
                     ], false);
                     }
 
-                    if($i>10){
-                        $conn->close();
-                    }
+                    // if($i>10){
+                    //     $conn->close();
+                    // }
 
-                    if($data===''){
-                        $i++;
-                        Coroutine::sleep(1);
+                    // if($data===''){
+                    //     $i++;
+                    //     Coroutine::sleep(1);
 
-                    }
+                    // }
 
                     
                     
