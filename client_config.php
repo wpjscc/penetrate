@@ -32,10 +32,16 @@ return [
                 
             ]
         ],
+        // [
+        //     'type'=>'tcp',
+        //     'local_ip'=> '127.0.0.1',
+        //     'local_port'=> 3306,//
+
+        // ],
         [
             'type'=>'tcp',
-            'local_ip'=> '127.0.0.1',
-            'local_port'=> 3306,//
+            'local_ip'=> '47.96.15.116',
+            'local_port'=> 22,//
 
         ]
     ]
