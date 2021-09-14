@@ -1226,7 +1226,7 @@ run(function () {
                 echo "yes--------------------\n";
                 while (true) {
                     //接收数据
-                    $data = $conn->recv();
+                    $data = $conn->recv(2);
     
                     // var_dump($data);
                     // exit();
