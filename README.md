@@ -90,3 +90,13 @@ kill -9 pid
 tcp 穿透服务器要开启9504 端口，端口和客户端端口是一对一的关系，即一盒tcp端口，只能代理一个tcp客户端。
 
 要支持多个的话，服务器就要开启多个端口
+
+客户端
+```
+php proxy_tcp_client.php
+```
+
+服务端
+```
+php proxy_tcp_server.php
+```
