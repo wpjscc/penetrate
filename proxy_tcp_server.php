@@ -1224,9 +1224,10 @@ run(function () {
                 // ],false);
     
                 echo "yes--------------------\n";
+                $i = 0;
                 while (true) {
                     //接收数据
-                    $data = $conn->recv(2);
+                    $data = $conn->recv();
     
                     // var_dump($data);
                     // exit();
@@ -1272,7 +1273,16 @@ run(function () {
                     ], false);
                     }
 
-                    echo "Tcp\n";
+                    if($i>10){
+                        $conn->close();
+                    }
+
+                    if($data===''){
+                        $i++;
+                        Coroutine::sleep(1);
+
+                    }
+
                     
                     
                     // $conn->send('hello');
