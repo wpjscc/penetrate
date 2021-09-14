@@ -28,7 +28,8 @@ return [
             'local_port'=> $local_port,//
             'custom_domains'=> [
                 $domain,
-                '127.0.0.1'
+                '127.0.0.1',
+                '47.96.15.116',
                 
             ]
         ],
