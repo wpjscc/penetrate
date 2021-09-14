@@ -1199,7 +1199,7 @@ run(function () {
                     // var_dump($localPort);
                     // var_dump($host);
                     $host = '127.0.0.1';
-                    if ($localIp&&$localPort&&$serverPort==$config['tcp_port']) {//todo token 和localIp 一一对应
+                    if ($localIp&&$localPort&&$serverPort==$config['tcp_port']) {//
                         $myApp->createTcpProxy($ws, $objectId, $localIp, $localPort, $host);
 
                         // return;
