@@ -1271,6 +1271,8 @@ run(function () {
                         'host' => '127.0.0.1',
                     ], false);
                     }
+
+                    echo "Tcp\n"
                     
                     
                     // $conn->send('hello');
