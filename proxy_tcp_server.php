@@ -660,7 +660,40 @@ class MyAppProxy
             'content' => $message['content'],
         ]);
         $response = $http['response'];
-        $response->end($message['content']);
+        if($response instanceof Swoole\Coroutine\Server\Connection){
+            $response->close();
+            var_dump($message['content']);
+            exit();
+        }else{
+            $response->end($message['content']);
+        }
+
+        unset($httpObjects[$ws->request_id]);
+        unset($tunnelWsObjects[$ws->objectId]);
+        unset($httpToTunnelWs[$ws->request_id]);
+
+        $ws->close();
+    }
+    public function proxyTcpException($res, $ws, $message)
+    {
+        global $httpObjects;
+        global $tunnelWsObjects;
+        global $httpToTunnelWs;
+        $http = $httpObjects[$ws->request_id];
+        eventFail('MyAppProxy', [
+            'time' => microtime(true),
+            'event' => 'proxyRequest',
+            'uniqid' => $message['uniqid'],
+            'content' => $message['content'],
+        ]);
+        $response = $http['response'];
+        if($response instanceof Swoole\Coroutine\Server\Connection){
+            $response->close();
+            var_dump($message['content']);
+            // exit();
+        }else{
+            $response->end($message['content']);
+        }
 
         unset($httpObjects[$ws->request_id]);
         unset($tunnelWsObjects[$ws->objectId]);
@@ -1113,8 +1146,10 @@ run(function () {
                     if ($http) {
                         if ($http['response'] instanceof Swoole\Coroutine\Server\Connection) {
                             var_dump(444444444444);
+                            colorLog("time:".microtime(true).'-'."ProxyTcpClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4041", 'e');
+
                             $http['response']->close();
-                            exit();
+                            // exit();
                         } else {
                             colorLog("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4041", 'e');
                             $http['response']->end("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4041\n");
@@ -1131,7 +1166,7 @@ run(function () {
                     unset($httpToTunnelWs[$ws->request_id??null]);
 
                     if (isset($waitGroups[$ws->request_id])) {
-                        $waitGroups[$ws->request_id]->done();
+                        // $waitGroups[$ws->request_id]->done();
                         unset($waitGroups[$ws->request_id]);
                     }
 
@@ -1144,7 +1179,9 @@ run(function () {
                         if ($http['response'] instanceof Swoole\Coroutine\Server\Connection) {
                             var_dump(5555555555555);
                             $http['response']->close();
-                            exit();
+                            colorLog("time:".microtime(true).'-'."ProxyTcpClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4042", 'e');
+                            
+                            // exit();
                         } else {
                             colorLog("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4042", 'e');
                             colorLog('4042', 'e');

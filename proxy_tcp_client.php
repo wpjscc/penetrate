@@ -547,6 +547,8 @@ class MyClientProxy
         
         // var_dump($message['data']);
         go(function () use ($ws, $message, $local) {
+            global $tcpObjects;
+            global $httpObjects;
             
             $httpObjects[$message['uniqid']] = 1;
             echo "time:".microtime(true).'-'."receiveTcpRequest:".$message['proxy_client_id']."\n";
@@ -581,9 +583,14 @@ class MyClientProxy
                     'uniqid' => $message['uniqid'],
                 ]);
               
+                var_dump($content);
+                var_dump('-------------------');
+
                 if(isset($tcpObjects[$ws->request_id])){
                     $client = $tcpObjects[$ws->request_id];
                     $client->send($content);//后几次请求
+                    // var_dump($content);
+                    // exit();
                     // eventSuccess('MyClientProxy', [
                     //     'time' => microtime(true),
                     //     'event' => 'proxyTcpReponse',
@@ -601,7 +608,6 @@ class MyClientProxy
                             return ;
                         }
                     }
-                    global $tcpObjects;
                     $tcpObjects[$ws->request_id] = $client;
                 }
                 
@@ -690,7 +696,7 @@ class MyClientProxy
                     $ws->push(json_encode([
                         'event'=>'client',
                         'data' => [
-                            'event' =>'proxyException',
+                            'event' =>'proxyTcpException',
                             'data'=>[
                                 'request_id'=>$message['request_id'],
                                 'uniqid'=>$message['uniqid'],

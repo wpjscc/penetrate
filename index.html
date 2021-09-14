@@ -461,23 +461,23 @@
             <hr style="border:1px solid red">
 
             <div v-for="event in requests[uniqid]">
-            <div v-if="(event.event=='proxyRequest'&&event.status=='start')||(event.event=='proxyReponse'&&event.status=='success')||event.status=='fail' || event.event.includes('Tcp')">
+            <div v-if="((event.event=='proxyRequest'|| event.event=='proxyTcpRequest')&&event.status=='start')||((event.event=='proxyReponse'||event.event=='proxyTcpReponse')&&event.status=='success')||event.status=='fail'">
                 <h2>Time: <span v-text="event.date"></span></h2>
                 <h2>Group:<span v-text="event.group"></span></h2>
                 <h2>Event:<span v-text="event.event"></span></h2>
                 <h2>Status:<span v-text="event.status"></span></h2>
-                <div v-if="event.event=='proxyRequest'&&event.status=='start'|| event.event.includes('TcpReq')">
+                <div v-if="(event.event=='proxyRequest' || event.event=='proxyTcpRequest')&&event.status=='start'">
                 <div x-data="{open:true}">
 
                     <button x-on:click="open=!open">查看请求</button>
                     <button   :data-clipboard-text="base64_decode(event.content)" aria-label="Copy to clipboard"  class="ButtonBase-exshql-0 Button-sc-1cuu878-0 jXqkSa"><svg aria-hidden="true" role="img" class="StyledOcticon-sc-7ly0uy-0 hOvdVr" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="display: inline-block; user-select: none; vertical-align: text-bottom;"><path fill-rule="evenodd" d="M5.75 1a.75.75 0 00-.75.75v3c0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75v-3a.75.75 0 00-.75-.75h-4.5zm.75 3V2.5h3V4h-3zm-2.874-.467a.75.75 0 00-.752-1.298A1.75 1.75 0 002 3.75v9.5c0 .966.784 1.75 1.75 1.75h8.5A1.75 1.75 0 0014 13.25v-9.5a1.75 1.75 0 00-.874-1.515.75.75 0 10-.752 1.298.25.25 0 01.126.217v9.5a.25.25 0 01-.25.25h-8.5a.25.25 0 01-.25-.25v-9.5a.25.25 0 01.126-.217z"></path></svg></button>
-                    <button @click="localRequest(event)">重新发送</button>
+                    <button @click="localRequest(event)" v-if="event.event=='proxyRequest'">重新发送</button>
                     <pre x-show="open" >{{base64_decode(event.content)}}</pre>
                   
                 </div>
 
                 </div>
-                <div v-if="event.event=='proxyReponse'&&event.status=='success'|| event.event.includes('TcpRepon')">
+                <div v-if="(event.event=='proxyReponse'|| event.event=='proxyTcpReponse')&&event.status=='success'">
                 <div x-data="{open:false}">
                     
                     <button x-on:click="open=!open">查看响应</button>
