@@ -1080,44 +1080,44 @@ run(function () {
         $server->start();
     });
 
-    //tcp 服务
-    go(function () {
+    // //tcp 服务
+    // go(function () {
 
-        global $config;
-    //每个进程都监听9504端口
-        $server = new Swoole\Coroutine\Server('0.0.0.0', $config['tcp_port'], false, false);
+    //     global $config;
+    // //每个进程都监听9504端口
+    //     $server = new Swoole\Coroutine\Server('0.0.0.0', $config['tcp_port'], false, false);
 
-        //收到15信号关闭服务
-        Process::signal(SIGTERM, function () use ($server) {
-            $server->shutdown();
-        });
-        var_dump('-----------tcp_port------------'.$config['tcp_port']."\n");
-        //接收到新的连接请求 并自动创建一个协程
-        $server->handle(function (Connection $conn) {
-            var_dump($conn->exportSocket());
-            var_dump($conn->exportSocket()->getsockname());
-            var_dump($conn->exportSocket()->getpeername());
+    //     //收到15信号关闭服务
+    //     Process::signal(SIGTERM, function () use ($server) {
+    //         $server->shutdown();
+    //     });
+    //     var_dump('-----------tcp_port------------'.$config['tcp_port']."\n");
+    //     //接收到新的连接请求 并自动创建一个协程
+    //     $server->handle(function (Connection $conn) {
+    //         var_dump($conn->exportSocket());
+    //         var_dump($conn->exportSocket()->getsockname());
+    //         var_dump($conn->exportSocket()->getpeername());
 
-            while (true) {
-                //接收数据
-                $data = $conn->recv();
+    //         while (true) {
+    //             //接收数据
+    //             $data = $conn->recv();
 
-                if ($data === '' || $data === false) {
-                    $errCode = swoole_last_error();
-                    $errMsg = socket_strerror($errCode);
-                    echo "errCode: {$errCode}, errMsg: {$errMsg}\n";
-                    $conn->close();
-                    break;
-                }
-                // var_dump($conn->exportSocket());
-                //发送数据
-                $conn->send('hello');
+    //             if ($data === '' || $data === false) {
+    //                 $errCode = swoole_last_error();
+    //                 $errMsg = socket_strerror($errCode);
+    //                 echo "errCode: {$errCode}, errMsg: {$errMsg}\n";
+    //                 $conn->close();
+    //                 break;
+    //             }
+    //             // var_dump($conn->exportSocket());
+    //             //发送数据
+    //             $conn->send('hello');
 
-                // Coroutine::sleep(1);
-            }
-        });
+    //             // Coroutine::sleep(1);
+    //         }
+    //     });
 
-        //开始监听端口
-        $server->start();
-    });
+    //     //开始监听端口
+    //     $server->start();
+    // });
 });
