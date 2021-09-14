@@ -1275,7 +1275,7 @@ run(function () {
                     
                     // $conn->send('hello');
     
-                    Coroutine::sleep(1);
+                    // Coroutine::sleep(1);
                 }
             });
     
