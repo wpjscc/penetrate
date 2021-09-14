@@ -1184,15 +1184,15 @@ run(function () {
                 }
 
 
-                foreach ($configs as $config) {
-                    if ($config['type']!='tcp') {
+                foreach ($configs as $clientConfig) {
+                    if ($clientConfig['type']!='tcp') {
                         continue;
                     }
 
-                    $type = data_get($config, 'type', 'http');
-                    $localIp = data_get($config, 'local_ip', '127.0.0.1');
-                    $localPort = data_get($config, 'local_port', 80);
-                    $serverPort = data_get($config, 'server_port');
+                    $type = data_get($clientConfig, 'type', 'http');
+                    $localIp = data_get($clientConfig, 'local_ip', '127.0.0.1');
+                    $localPort = data_get($clientConfig, 'local_port', 80);
+                    $serverPort = data_get($clientConfig, 'server_port');
 
                     // var_dump($config);
                     // var_dump($localIp);
