@@ -399,7 +399,10 @@ class MyAppProxy
                 $waitGroups[$requestId]->done();
             }
 
-            //$http = $httpObjects[$requestId];
+            $http = $httpObjects[$requestId];
+            if($http['request']){//说明此时收到了数据，没必要发送了
+                return ;
+            }
             // var_dump($http);
             // exit();
             // return ;
@@ -703,238 +706,7 @@ class MyAppProxy
     }
 }
 
-class MyAppTcpProxy
-{
-    public function onMessage($res, $ws, $message)
-    {
-        $message = json_decode($message, true);
 
-        $event = data_get($message, 'event');
-        $data = data_get($message, 'data');
-
-        if ($event&&$data) {
-            if (method_exists($this, $event)) {
-                call_user_func([$this,$event], $res, $ws, $data);
-            }
-        }
-    }
-
-    public function client($res, $ws, $message)
-    {
-        //todo 处理一些前置事件
-        echo "ProxyEvent:client\n";
-        $event = data_get($message, 'event');
-        $data = data_get($message, 'data');
-        if ($event&&$data) {
-            echo "ProxyEvent:client:$event\n";
-            if (method_exists($this, $event)) {
-                call_user_func([$this,$event], $res, $ws, $data);
-            }
-        }
-        //todo 处理一些后置事件
-    }
-
-    /**
-     * 浏览器请求
-     *
-     * @param [type] $w
-     * @param [type] $data
-     * @return void
-     */
-    public function proxyLocalRequest($w, $message)
-    {
-        eventStart('MyAppProxy', [
-            'time' => microtime(true),
-            'event' => 'proxyRequest',
-            'uniqid' => $message['uniqid'],
-            'content' => $message['content'],
-            'extra' => [
-                'local_port' => $message['local_port'],
-                'local_ip' => $message['local_ip'],
-                'proxy_client_id'=>$message['proxy_client_id'],
-                'request_id'=>$message['request_id'],
-                'host'=>$message['host'],
-            ]
-        ]);
-
-        //todo server->client 新建一条通道
-    }
-
-    /**
-     * proxyClient->AppProxy
-     *
-     * @param [type] $res
-     * @param [type] $ws
-     * @param [type] $message
-     * @return void
-     */
-    public function proxyRequest($res, $ws, $message)
-    {
-        global $httpObjects;
-        global $httpToTunnelWs;
-
-
-        
-        $proxyClientId = $message['proxy_client_id'];
-        $requestId = $message['request_id'];
-        $ws->proxy_client_id = $proxyClientId;
-        $ws->request_id = $requestId;
-
-        $httpToTunnelWs[$requestId]=$proxyClientId;
-
-        //todo send
-        $http = $httpObjects[$requestId];
-
-        $request = $http['request'];
-        $response = $http['response'];
-
-        eventSuccess('MyApp', [
-            'time' => microtime(true),
-            'event' => 'createProxy',
-            'uniqid' => $message['uniqid'],
-            'content' => $message['host']
-        ]);
-
-        eventStart('MyAppProxy', [
-            'time' => microtime(true),
-            'event' => 'proxyRequest',
-            'uniqid' => $message['uniqid'],
-            'content' => $request->getData(),
-            'extra' => [
-                'local_port' => $message['local_port'],
-                'local_ip' => $message['local_ip'],
-                'proxy_client_id'=>$proxyClientId,
-                'request_id'=>$requestId,
-                'host'=>$message['host'],
-            ]
-        ]);
-
-        //todo 将http请求内容发送至客户端
-        echo "time:".microtime(true).'-'."proxyRequest:{$proxyClientId}\n";
-        $ws->push(json_encode([
-            'event' => 'system',
-            'data'=>[
-                'event' =>'receiveRequest',
-                'data' =>[
-                    'content'=> base64_encode($request->getData()),
-                    'local_port' => $message['local_port'],
-                    'local_ip' => $message['local_ip'],
-                    'proxy_client_id'=>$proxyClientId,
-                    'request_id'=>$requestId,
-                    'uniqid'=>$message['uniqid'],
-                    'host'=>$message['host'],
-                ]
-            ]
-        ]));
-        // var_dump($request->getData());
-        // exit();
-    }
-    public function proxyReponse($res, $ws, $message)
-    {
-        global $httpObjects;
-        global $tunnelWsObjects;
-        global $httpToTunnelWs;
-        $http = $httpObjects[$ws->request_id];
-        $response = $http['response'];
-        eventSuccess('MyAppProxy', [
-            'time' => microtime(true),
-            'event' => 'proxyRequest',
-            'uniqid' => $message['uniqid'],
-        ]);
-
-        eventStart('MyAppProxy', [
-            'time' => microtime(true),
-            'event' => 'proxyReponse',
-            'uniqid' => $message['uniqid'],
-        ]);
-
-        try {
-            $proxyReponse = parse_response(base64_decode($message['content']));
-        } catch (Exception $e) {//返回的信息不符合规范
-            $response->end($e->getMessage);
-            $ws->close();
-            unset($httpObjects[$ws->request_id]);
-            unset($tunnelWsObjects[$ws->objectId]);
-            unset($httpToTunnelWs[$ws->request_id]);
-            eventFail('MyAppProxy', [
-                'time' => microtime(true),
-                'event' => 'proxyReponse',
-                'uniqid' => $message['uniqid'],
-                'content' => $e->getMessage
-            ]);
-            return;
-        }
-
-
-        $headers = $proxyReponse->getHeaders();
-        // $cookies = $proxyReponse->getCookies();
-
-        // var_dump($cookies);
-        // $body = (string)$proxyReponse->getBody();
-        // var_dump($headers);
-        // var_dump(strlen($body));
-        // exit();
-        foreach ($headers as $key=> $value) {
-            // echo "{$key}:".$proxyReponse->getHeaderLine($key)."123\n";
-            $response->header($key, $value, true);
-        }
-        
-        // var_dump($response);
-        // exit();
-        // var_dump($res->getStatusCode());
-        // var_dump((string)$proxyReponse->getBody());
-        // exit();
-        // $response->status($proxyReponse->getStatusCode());
-
-        if ($proxyReponse->getStatusCode()==302) {
-            var_dump((string)$proxyReponse);
-            var_dump($headers);
-            // exit();
-        }
-
-        $response->status($proxyReponse->getStatusCode());
-        if ((string)$proxyReponse->getBody()) {
-            $response->write($proxyReponse->getBody());
-        }
-        $response->end();
-
-        eventSuccess('MyAppProxy', [
-            'time' => microtime(true),
-            'event' => 'proxyReponse',
-            'uniqid' => $message['uniqid'],
-            'content' => (string) $proxyReponse
-        ]);
-        echo "time:".microtime(true).'-'."proxyReponse:{$ws->proxy_client_id}\n";
-
-        unset($httpObjects[$ws->request_id]);
-        unset($tunnelWsObjects[$ws->objectId]);
-        unset($httpToTunnelWs[$ws->request_id]);
-        // $response->end($message['content']);
-        $ws->close();
-    }
-
-    public function proxyException($res, $ws, $message)
-    {
-        global $httpObjects;
-        global $tunnelWsObjects;
-        global $httpToTunnelWs;
-        $http = $httpObjects[$ws->request_id];
-        eventFail('MyAppProxy', [
-            'time' => microtime(true),
-            'event' => 'proxyRequest',
-            'uniqid' => $message['uniqid'],
-            'content' => $message['content'],
-        ]);
-        $response = $http['response'];
-        $response->end($message['content']);
-
-        unset($httpObjects[$ws->request_id]);
-        unset($tunnelWsObjects[$ws->objectId]);
-        unset($httpToTunnelWs[$ws->request_id]);
-
-        $ws->close();
-    }
-}
 global $myApp;
 if (!isset($myApp)) {
     $myApp = new MyApp();
@@ -943,10 +715,7 @@ global $myAppProxy;
 if (!isset($myAppProxy)) {
     $myAppProxy = new MyAppProxy();
 }
-global $myAppTcpProxy;
-if (!isset($myAppProxy)) {
-    $myAppTcpProxy = new MyAppTcpProxy();
-}
+
 run(function () {
     Swoole\Timer::tick(5000, function () {
         echo '运行内存：'.round(memory_get_usage()/1024/1024, 2)."MB\n";
