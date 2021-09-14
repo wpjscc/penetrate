@@ -1231,8 +1231,8 @@ run(function () {
     
                     // var_dump($data);
                     // exit();
-                    // if ($data === '' || $data === false) {
-                    if ($data === false) {
+                    if ($data === '' || $data === false) {
+                    // if ($data === false) {
                         $errCode = swoole_last_error();
                         $errMsg = socket_strerror($errCode);
                         echo "errCode: {$errCode}, errMsg: {$errMsg}\n";
