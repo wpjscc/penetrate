@@ -36,12 +36,14 @@ return [
         //     'type'=>'tcp',
         //     'local_ip'=> '127.0.0.1',
         //     'local_port'=> 3306,//
+        // 'token'=> '123456789'
 
         // ],
         [
             'type'=>'tcp',
             'local_ip'=> '10.8.0.9',
             'local_port'=> 22,//
+            'token'=> '123456789'
 
         ]
     ]

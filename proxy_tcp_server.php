@@ -1170,12 +1170,13 @@ run(function () {
                     $type = data_get($config, 'type', 'http');
                     $localIp = data_get($config, 'local_ip', '127.0.0.1');
                     $localPort = data_get($config, 'local_port', 80);
+                    $token = data_get($config, 'token', '');
                     // var_dump($config);
                     // var_dump($localIp);
                     // var_dump($localPort);
                     // var_dump($host);
                     $host = '127.0.0.1';
-                    if ($localIp&&$localPort) {//todo
+                    if ($localIp&&$localPort&&in_array($token,$config['tokens'])) {//todo token 和localIp 一一对应
                         $myApp->createTcpProxy($ws, $objectId, $localIp, $localPort, $host);
 
                         // return;

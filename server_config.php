@@ -5,4 +5,7 @@ return [
     'server_port'=>'9502',
     'vhost_http_port'=>'9503',
     'tcp_port'=>'9504',
+    'tokens'=>[
+        '123456789'
+    ]
 ];
