@@ -1196,7 +1196,7 @@ run(function () {
                     unset($httpObjects[$ws->request_id??null]);
                     unset($httpToTunnelWs[$ws->request_id??null]);
                     if (isset($waitGroups[$ws->request_id])) {
-                        $waitGroups[$ws->request_id]->done();
+                        // $waitGroups[$ws->request_id]->done();
                         unset($waitGroups[$ws->request_id]);
                     }
                     $ws->close();
