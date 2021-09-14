@@ -1137,147 +1137,151 @@ run(function () {
     });
 
     //tcp 服务
-    go(function () {
-        global $config;
-        //每个进程都监听9504端口
-        $server = new Swoole\Coroutine\Server('0.0.0.0', $config['tcp_port'], false, false);
+    global $config;
 
-        //收到15信号关闭服务
-        Process::signal(SIGTERM, function () use ($server) {
-            $server->shutdown();
-        });
-        var_dump('-----------tcp_port------------'.$config['tcp_port']."\n");
-        //接收到新的连接请求 并自动创建一个协程
-        $server->handle(function (Connection $conn) {
-            global $config;
-            global $wsObjects;
-            global $httpObjects;
-            global $wsObjectConfigs;//配置
-            global $waitGroups;//配置
-            global $tunnelWsObjects;//配置
-
-            
-
-            $objectId = spl_object_id($conn);
-            $conn->objectId = $objectId;
-
-            // echo "request_id:".$objectId."\nHost:".$request->header['host']."\n";
-            $httpObjects[$objectId] = [
-                'request' => '',
-                'response' => $conn
-            ];
-            $wg = new WaitGroup();
-            $waitGroups[$objectId] = $wg;
-            $waitGroups[$objectId]->add();
-            // var_dump($conn->exportSocket());
-            // var_dump($conn->exportSocket()->getsockname());
-            // var_dump($conn->exportSocket()->getpeername());
-            global $myApp;
-            global $myAppProxy;
-            global $tunnelWsObjects;
-            global $httpToTunnelWs;
-
-            foreach ($wsObjects as $key=>$ws) {
-                $configs = data_get($wsObjectConfigs, $ws->objectId);
-                if (empty($configs)) {
-                    continue;
-                }
-
-
-                foreach ($configs as $clientConfig) {
-                    if ($clientConfig['type']!='tcp') {
+    foreach ($config['tcp_ports'] as $tcpPort){
+        go(function ()use($tcpPort) {
+            //每个进程都监听9504端口
+            $server = new Swoole\Coroutine\Server('0.0.0.0', $tcpPort, false, false);
+    
+            //收到15信号关闭服务
+            Process::signal(SIGTERM, function () use ($server) {
+                $server->shutdown();
+            });
+            var_dump('-----------tcp_port------------'.$tcpPort."\n");
+            //接收到新的连接请求 并自动创建一个协程
+            $server->handle(function (Connection $conn)use($tcpPort) {
+                global $config;
+                global $wsObjects;
+                global $httpObjects;
+                global $wsObjectConfigs;//配置
+                global $waitGroups;//配置
+                global $tunnelWsObjects;//配置
+    
+                
+    
+                $objectId = spl_object_id($conn);
+                $conn->objectId = $objectId;
+    
+                // echo "request_id:".$objectId."\nHost:".$request->header['host']."\n";
+                $httpObjects[$objectId] = [
+                    'request' => '',
+                    'response' => $conn
+                ];
+                $wg = new WaitGroup();
+                $waitGroups[$objectId] = $wg;
+                $waitGroups[$objectId]->add();
+                // var_dump($conn->exportSocket());
+                // var_dump($conn->exportSocket()->getsockname());
+                // var_dump($conn->exportSocket()->getpeername());
+                global $myApp;
+                global $myAppProxy;
+                global $tunnelWsObjects;
+                global $httpToTunnelWs;
+    
+                foreach ($wsObjects as $key=>$ws) {
+                    $configs = data_get($wsObjectConfigs, $ws->objectId);
+                    if (empty($configs)) {
                         continue;
                     }
-
-                    $type = data_get($clientConfig, 'type', 'http');
-                    $localIp = data_get($clientConfig, 'local_ip', '127.0.0.1');
-                    $localPort = data_get($clientConfig, 'local_port', 80);
-                    $serverPort = data_get($clientConfig, 'server_port');
-
-                    // var_dump($config);
-                    // var_dump($localIp);
-                    // var_dump($localPort);
-                    // var_dump($host);
-                    $host = '127.0.0.1';
-                    if ($localIp&&$localPort&&$serverPort==$config['tcp_port']) {//
-                        $myApp->createTcpProxy($ws, $objectId, $localIp, $localPort, $host);
-
-                        // return;
-                        break 2;
-                    }
-                }
-            }
-            $waitGroups[$objectId]->wait();
-            
-            $ws = $tunnelWsObjects[$httpToTunnelWs[$objectId]];
-
-           //链接
-            // $myAppProxy->proxyTcpRequest('',$ws,[
-            //     'request_id'=>$objectId,
-            //     'proxy_client_id'=>$ws->proxy_client_id,
-            //     'local_port'=> $localPort,
-            //     'local_ip'=> $localIp,
-            //     'uniqid' => $ws->proxy_client_id,
-            //     'host' => '127.0.0.1',
-            // ],false);
-
-            echo "yes--------------------\n";
-            while (true) {
-                //接收数据
-                $data = $conn->recv();
-
-                // var_dump($data);
-                // exit();
-                // if ($data === '' || $data === false) {
-                if ($data === false) {
-                    $errCode = swoole_last_error();
-                    $errMsg = socket_strerror($errCode);
-                    echo "errCode: {$errCode}, errMsg: {$errMsg}\n";
-                    $conn->close();
-                    unset($httpObjects[$objectId]);
-                    unset($waitGroups[$objectId]);
-                    if(isset($httpToTunnelWs[$objectId])){
-                        if(isset($tunnelWsObjects[$httpToTunnelWs[$objectId]])){
-                            $tunnelWs = $tunnelWsObjects[$httpToTunnelWs[$objectId]];
-                            // var_dump($tunnelWsObjects[$httpToTunnelWs[$objectId]]);
-                            unset($tunnelWsObjects[$httpToTunnelWs[$objectId]]);
-                            $tunnelWs->close();
-
+    
+    
+                    foreach ($configs as $clientConfig) {
+                        if ($clientConfig['type']!='tcp') {
+                            continue;
+                        }
+    
+                        $type = data_get($clientConfig, 'type', 'http');
+                        $localIp = data_get($clientConfig, 'local_ip', '127.0.0.1');
+                        $localPort = data_get($clientConfig, 'local_port', 80);
+                        $serverPort = data_get($clientConfig, 'server_port');
+    
+                        // var_dump($config);
+                        // var_dump($localIp);
+                        // var_dump($localPort);
+                        // var_dump($host);
+                        $host = '127.0.0.1';
+                        if ($localIp&&$localPort&&$serverPort==$tcpPort) {//
+                            $myApp->createTcpProxy($ws, $objectId, $localIp, $localPort, $host);
+    
+                            // return;
+                            break 2;
                         }
                     }
-                    unset($httpToTunnelWs[$objectId]);
-                    return ;
-                    break;
-                } else if($data!=='') {
-                    // var_dump($conn->exportSocket());
-                    //发送数据
-                    $httpObjects[$objectId] = [
-                        'request' => $data,
-                        'response' => $conn
-                    ];
-
-                    $ws = $tunnelWsObjects[$httpToTunnelWs[$objectId]];
-
+                }
+                $waitGroups[$objectId]->wait();
+                
+                $ws = $tunnelWsObjects[$httpToTunnelWs[$objectId]];
+    
+               //链接
+                // $myAppProxy->proxyTcpRequest('',$ws,[
+                //     'request_id'=>$objectId,
+                //     'proxy_client_id'=>$ws->proxy_client_id,
+                //     'local_port'=> $localPort,
+                //     'local_ip'=> $localIp,
+                //     'uniqid' => $ws->proxy_client_id,
+                //     'host' => '127.0.0.1',
+                // ],false);
+    
+                echo "yes--------------------\n";
+                while (true) {
+                    //接收数据
+                    $data = $conn->recv();
+    
                     // var_dump($data);
                     // exit();
-                    $myAppProxy->proxyTcpRequest('', $ws, [
-                    'request_id'=>$objectId,
-                    'proxy_client_id'=>$ws->proxy_client_id,
-                    'local_port'=> $localPort,
-                    'local_ip'=> $localIp,
-                    'uniqid' => $ws->proxy_client_id,
-                    'host' => '127.0.0.1',
-                ], false);
+                    // if ($data === '' || $data === false) {
+                    if ($data === false) {
+                        $errCode = swoole_last_error();
+                        $errMsg = socket_strerror($errCode);
+                        echo "errCode: {$errCode}, errMsg: {$errMsg}\n";
+                        $conn->close();
+                        unset($httpObjects[$objectId]);
+                        unset($waitGroups[$objectId]);
+                        if(isset($httpToTunnelWs[$objectId])){
+                            if(isset($tunnelWsObjects[$httpToTunnelWs[$objectId]])){
+                                $tunnelWs = $tunnelWsObjects[$httpToTunnelWs[$objectId]];
+                                // var_dump($tunnelWsObjects[$httpToTunnelWs[$objectId]]);
+                                unset($tunnelWsObjects[$httpToTunnelWs[$objectId]]);
+                                $tunnelWs->close();
+    
+                            }
+                        }
+                        unset($httpToTunnelWs[$objectId]);
+                        return ;
+                        break;
+                    } else if($data!=='') {
+                        // var_dump($conn->exportSocket());
+                        //发送数据
+                        $httpObjects[$objectId] = [
+                            'request' => $data,
+                            'response' => $conn
+                        ];
+    
+                        $ws = $tunnelWsObjects[$httpToTunnelWs[$objectId]];
+    
+                        // var_dump($data);
+                        // exit();
+                        $myAppProxy->proxyTcpRequest('', $ws, [
+                        'request_id'=>$objectId,
+                        'proxy_client_id'=>$ws->proxy_client_id,
+                        'local_port'=> $localPort,
+                        'local_ip'=> $localIp,
+                        'uniqid' => $ws->proxy_client_id,
+                        'host' => '127.0.0.1',
+                    ], false);
+                    }
+                    
+                    
+                    // $conn->send('hello');
+    
+                    Coroutine::sleep(1);
                 }
-                
-                
-                // $conn->send('hello');
-
-                Coroutine::sleep(1);
-            }
+            });
+    
+            //开始监听端口
+            $server->start();
         });
-
-        //开始监听端口
-        $server->start();
-    });
+    }
+   
 });

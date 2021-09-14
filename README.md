@@ -77,3 +77,16 @@ kill -9 pid
 }
 
  ```
+
+
+
+ ## 2021-09-14 更新
+
+支持tcp 穿透
+
+ * proxy_client.php 是  proxy_tcp_client.php 的子集
+ * proxy_server.php 是  proxy_tcp_server.php 的子集
+
+tcp 穿透服务器要开启9504 端口，端口和客户端端口是一对一的关系，即一盒tcp端口，只能代理一个tcp客户端。
+
+要支持多个的话，服务器就要开启多个端口
