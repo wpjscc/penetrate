@@ -370,32 +370,44 @@ class MyAppProxy
         // var_dump($request->getData());
         // exit();
     }
-     /**
-     * proxyClient->AppProxy
-     *
-     * @param [type] $res
-     * @param [type] $ws
-     * @param [type] $message
-     * @return void
-     */
-    public function proxyTcpRequest($res, $ws, $message,$first = true)
+    /**
+    * proxyClient->AppProxy
+    *
+    * @param [type] $res
+    * @param [type] $ws
+    * @param [type] $message
+    * @return void
+    */
+    public function proxyTcpRequest($res, $ws, $message, $first = true)
     {
         global $httpObjects;
         global $httpToTunnelWs;
         global $waitGroups;
-        if($first){//第一次注册
-            // $proxyClientId = $message['proxy_client_id'];
+
+        if ($first) {//第一次注册
+
+            // var_dump($message);
+         
+            $proxyClientId = $message['proxy_client_id'];
             $requestId = $message['request_id'];
-            // $ws->proxy_client_id = $proxyClientId;
-            // $ws->request_id = $requestId;
+            $ws->proxy_client_id = $proxyClientId;
+            $ws->request_id = $requestId;
 
-            // $httpToTunnelWs[$requestId]=$proxyClientId;
+            $httpToTunnelWs[$requestId]=$ws->objectId;
 
-            if(isset($waitGroups[$requestId])){
+            if (isset($waitGroups[$requestId])) {
                 $waitGroups[$requestId]->done();
             }
+
+            //$http = $httpObjects[$requestId];
+            // var_dump($http);
+            // exit();
             // return ;
+            
         }
+
+        // var_dump($message);
+        // exit();
    
 
 
@@ -556,10 +568,9 @@ class MyAppProxy
             'uniqid' => $message['uniqid'],
         ]);
 
-        try{
+        try {
             $response->send(base64_decode($message['content']));
-
-        }catch(Exception $e){
+        } catch (Exception $e) {
             $ws->close();
             $response->close();
             unset($httpObjects[$ws->request_id]);
@@ -1100,15 +1111,14 @@ run(function () {
                     // var_dump($httpObjects);
                     $http = data_get($httpObjects, $ws->request_id??null);
                     if ($http) {
-                        if($http['response'] instanceof Swoole\Coroutine\Server\Connection){
+                        if ($http['response'] instanceof Swoole\Coroutine\Server\Connection) {
                             var_dump(444444444444);
                             $http['response']->close();
                             exit();
-                        }else{
+                        } else {
                             colorLog("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4041", 'e');
                             $http['response']->end("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4041\n");
                         }
-
                     } else {
                         colorLog("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4041");
 
@@ -1120,7 +1130,7 @@ run(function () {
                     unset($httpObjects[$ws->request_id??null]);
                     unset($httpToTunnelWs[$ws->request_id??null]);
 
-                    if(isset($waitGroups[$ws->request_id])){
+                    if (isset($waitGroups[$ws->request_id])) {
                         $waitGroups[$ws->request_id]->done();
                         unset($waitGroups[$ws->request_id]);
                     }
@@ -1131,17 +1141,16 @@ run(function () {
                     echo "time:".microtime(true).'-'.'errorCode: ' . swoole_last_error() . "\n";
                     $http = data_get($httpObjects, $ws->request_id??null);
                     if ($http) {
-                        if($http['response'] instanceof Swoole\Coroutine\Server\Connection){
+                        if ($http['response'] instanceof Swoole\Coroutine\Server\Connection) {
                             var_dump(5555555555555);
                             $http['response']->close();
                             exit();
-                        }else{
+                        } else {
                             colorLog("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4042", 'e');
                             colorLog('4042', 'e');
     
                             $http['response']->end("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->request_id}-{$ws->proxy_client_id}-close-4042\n");
                         }
-
                     } else {
                         colorLog("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4042");
                         colorLog('4042');
@@ -1149,7 +1158,7 @@ run(function () {
                     unset($tunnelWsObjects[$ws->objectId]);
                     unset($httpObjects[$ws->request_id??null]);
                     unset($httpToTunnelWs[$ws->request_id??null]);
-                    if(isset($waitGroups[$ws->request_id])){
+                    if (isset($waitGroups[$ws->request_id])) {
                         $waitGroups[$ws->request_id]->done();
                         unset($waitGroups[$ws->request_id]);
                     }
@@ -1167,16 +1176,13 @@ run(function () {
                             colorLog("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4043", 'e');
                             colorLog('4043', 'e');
 
-                            if($http['response'] instanceof Swoole\Coroutine\Server\Connection){
+                            if ($http['response'] instanceof Swoole\Coroutine\Server\Connection) {
                                 $http['response']->close();
                                 var_dump(32312312312);
                                 exit();
-                            }else{
+                            } else {
                                 $http['response']->end("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4043\n");
-
                             }
-
-
                         } else {
                             colorLog("time:".microtime(true).'-'."ProxyClient:{$ws->objectId}-{$ws->request_id}-{$ws->proxy_client_id}-close-4043");
                             colorLog('4043');
@@ -1188,7 +1194,7 @@ run(function () {
                         unset($httpObjects[$ws->request_id??null]);
                         unset($httpToTunnelWs[$ws->request_id??null]);
 
-                        if(isset($waitGroups[$ws->request_id])){
+                        if (isset($waitGroups[$ws->request_id])) {
                             $waitGroups[$ws->request_id]->done();
                             unset($waitGroups[$ws->request_id]);
                         }
@@ -1305,9 +1311,8 @@ run(function () {
 
     //tcp 服务
     go(function () {
-
         global $config;
-    //每个进程都监听9504端口
+        //每个进程都监听9504端口
         $server = new Swoole\Coroutine\Server('0.0.0.0', $config['tcp_port'], false, false);
 
         //收到15信号关闭服务
@@ -1317,7 +1322,6 @@ run(function () {
         var_dump('-----------tcp_port------------'.$config['tcp_port']."\n");
         //接收到新的连接请求 并自动创建一个协程
         $server->handle(function (Connection $conn) {
-
             global $wsObjects;
             global $httpObjects;
             global $wsObjectConfigs;//配置
@@ -1353,7 +1357,7 @@ run(function () {
 
 
                 foreach ($configs as $config) {
-                    if($config['type']!='tcp'){
+                    if ($config['type']!='tcp') {
                         continue;
                     }
                     $custom_domains = data_get($config, 'custom_domains', []);
@@ -1365,7 +1369,7 @@ run(function () {
                     // var_dump($localPort);
                     // var_dump($host);
                     $host = '127.0.0.1';
-                    if ($localIp&&$localPort) {//todo 
+                    if ($localIp&&$localPort) {//todo
                         $myApp->createTcpProxy($ws, $objectId, $localIp, $localPort, $host);
 
                         // return;
@@ -1377,7 +1381,7 @@ run(function () {
             
             $ws = $tunnelWsObjects[$httpToTunnelWs[$objectId]];
 
-            // //模拟链接
+           //链接
             // $myAppProxy->proxyTcpRequest('',$ws,[
             //     'request_id'=>$objectId,
             //     'proxy_client_id'=>$ws->proxy_client_id,
@@ -1392,7 +1396,10 @@ run(function () {
                 //接收数据
                 $data = $conn->recv();
 
-                if ($data === '' || $data === false) {
+                // var_dump($data);
+                // exit();
+                // if ($data === '' || $data === false) {
+                if ($data === false) {
                     $errCode = swoole_last_error();
                     $errMsg = socket_strerror($errCode);
                     echo "errCode: {$errCode}, errMsg: {$errMsg}\n";
@@ -1409,29 +1416,34 @@ run(function () {
                         }
                     }
                     unset($httpToTunnelWs[$objectId]);
+                    return ;
                     break;
-                }
-                // var_dump($conn->exportSocket());
-                //发送数据
-                $httpObjects[$objectId] = [
-                    'request' => $data,
-                    'response' => $conn
-                ];
+                } else if($data!=='') {
+                    // var_dump($conn->exportSocket());
+                    //发送数据
+                    $httpObjects[$objectId] = [
+                        'request' => $data,
+                        'response' => $conn
+                    ];
 
-                $ws = $tunnelWsObjects[$httpToTunnelWs[$objectId]];
+                    $ws = $tunnelWsObjects[$httpToTunnelWs[$objectId]];
 
-                $myAppProxy->proxyTcpRequest('',$ws,[
+                    // var_dump($data);
+                    // exit();
+                    $myAppProxy->proxyTcpRequest('', $ws, [
                     'request_id'=>$objectId,
                     'proxy_client_id'=>$ws->proxy_client_id,
                     'local_port'=> $localPort,
                     'local_ip'=> $localIp,
                     'uniqid' => $ws->proxy_client_id,
                     'host' => '127.0.0.1',
-                ],false);
+                ], false);
+                }
+                
                 
                 // $conn->send('hello');
 
-                // Coroutine::sleep(1);
+                Coroutine::sleep(1);
             }
         });
 

@@ -584,6 +584,12 @@ class MyClientProxy
                 if(isset($tcpObjects[$ws->request_id])){
                     $client = $tcpObjects[$ws->request_id];
                     $client->send($content);//后几次请求
+                    // eventSuccess('MyClientProxy', [
+                    //     'time' => microtime(true),
+                    //     'event' => 'proxyTcpReponse',
+                    //     'uniqid' => $message['uniqid'],
+                    //     'content' => $content
+                    // ]);
                     return ;
                 }else{
                     $client = new Client(SWOOLE_SOCK_TCP);
@@ -640,9 +646,11 @@ class MyClientProxy
                                 'uniqid' => $message['uniqid'],
                                 'content' => 'error: '.$e->getMessage()
                             ]);
-                            echo 'error: '.$e->getMessage();
+                            colorLog($e->getMessage(),'e');
                             $client->close();
                             $ws->close();
+                            
+                            exit();
                             break;
                         }
                     } else {
