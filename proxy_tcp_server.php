@@ -1252,6 +1252,7 @@ run(function () {
                         return ;
                         break;
                     } else if($data!=='') {
+                        $i = 0;
                         // var_dump($conn->exportSocket());
                         //发送数据
                         $httpObjects[$objectId] = [
@@ -1280,7 +1281,6 @@ run(function () {
                     // if($data===''){
                     //     $i++;
                     //     Coroutine::sleep(1);
-
                     // }
 
                     
