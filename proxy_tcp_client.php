@@ -689,7 +689,7 @@ class MyClientProxy
                             }
                         }
                     }
-                    Co::sleep(1);
+                    // Co::sleep(1);
                 }
             } catch (Exception $e) {
                 if (!$local) {
