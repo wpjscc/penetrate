@@ -1205,7 +1205,7 @@ run(function () {
                 global $myAppProxy;
                 global $tunnelWsObjects;
                 global $httpToTunnelWs;
-    
+                $state  = false;
                 foreach ($wsObjects as $key=>$ws) {
                     $configs = data_get($wsObjectConfigs, $ws->objectId);
                     if (empty($configs)) {
@@ -1230,13 +1230,27 @@ run(function () {
                         $host = '127.0.0.1';
                         if ($localIp&&$localPort&&$serverPort==$tcpPort) {//
                             $myApp->createTcpProxy($ws, $objectId, $localIp, $localPort, $host);
-    
+                            $state = true;
                             // return;
                             break 2;
                         }
                     }
                 }
+
+                if(!$state){
+                    $waitGroups[$objectId]->done();
+                }
+
                 $waitGroups[$objectId]->wait();
+
+                if(!$state){
+                    $conn->send('no proxy');
+                    unset($httpObjects[$objectId]);
+                    unset($waitGroups[$objectId]);
+                    $conn->close();
+                    return ;
+                }
+
                 
                 $ws = $tunnelWsObjects[$httpToTunnelWs[$objectId]];
     
