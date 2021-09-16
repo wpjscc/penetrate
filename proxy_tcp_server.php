@@ -270,6 +270,26 @@ class MyApp
         $response->end($message['content']);//错误信息返回
         unset($httpObjects[$ws->request_id]);
     }
+    public function proxyTcpError($res, $ws, $message)
+    {
+        global $httpObjects;
+        eventFail('MyApp', [
+            'time' => microtime(true),
+            'event' => 'createTcpProxy',
+            'uniqid' => $message['uniqid'],
+            'content' => $message['content'],
+        ]);
+        $requestId = data_get($message, 'request_id');
+        $http = $httpObjects[$requestId];
+        $response = $http['response'];
+        if($response instanceof Swoole\Coroutine\Server\Connection){
+            $response->close();
+            var_dump($message['content']);
+            // exit();
+        }
+
+        unset($httpObjects[$ws->request_id]);
+    }
 }
 
 class MyAppProxy

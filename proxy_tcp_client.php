@@ -270,7 +270,7 @@ class MyClient
                     $ws->push(json_encode([
                         'event'=>'client',
                         'data' => [
-                            'event' =>'proxyError',
+                            'event' =>'proxyTcpError',
                             'data'=>[
                                 'time'=> $time,
                                 'uniqid'=>$data['uniqid'],
