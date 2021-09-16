@@ -391,7 +391,7 @@ class MyClientProxy
             //todo connect local config
             // var_dump($message);
             //todo  http
-
+            global $config;
             $httpObjects[$message['uniqid']] = 1;
             echo "time:".microtime(true).'-'."receiveRequest:".$message['proxy_client_id']."\n";
             $proxyRequest = parse_request(base64_decode($message['content']));
@@ -421,8 +421,11 @@ class MyClientProxy
                 ]
             ]);
 
-
-        
+            if($config['debug']??false){
+                $info = '-------------'.date('Y-m-d H:i:s').'-request--------------'."\n";
+                $info .= (string)$proxyRequest."\n\n";
+            }
+            
             
             try {
                 eventSuccess('MyClientProxy', [
@@ -460,7 +463,12 @@ class MyClientProxy
                         ]
                     ]));
                 }
-                
+                if($config['debug']??false){
+                    $info.='-------------'.date('Y-m-d H:i:s').'-response--------------'."\n";
+                    $info.= $e->getMessage()."\n";
+                    colorLog($info, 'e');
+
+                }
                 eventFail('MyClientProxy', [
                     'time' => microtime(true),
                     'event' => 'proxyReponse',
@@ -468,6 +476,7 @@ class MyClientProxy
                     'content' => "Local proxyException. Error:".$e->getMessage()
                 ]);
                 unset($httpObjects[$message['uniqid']]);
+               
                 return ;
             }
             
@@ -510,7 +519,12 @@ class MyClientProxy
                     ]
                 ]));
                 }
-                
+                if($config['debug']??false){
+                    $info.='-------------'.date('Y-m-d H:i:s').'-response--------------'."\n";
+                    $info.= (string)$response."\n";
+                    colorLog($info, 's');
+
+                }
                 eventSuccess('MyClientProxy', [
                     'time' => microtime(true),
                     'event' => 'proxyReponse',
@@ -518,15 +532,23 @@ class MyClientProxy
                     'content' => (string)$response
                 ]);
                 unset($httpObjects[$message['uniqid']]);
+                
             } catch (Exception $e) {
                 unset($httpObjects[$message['uniqid']]);
+
+                if($config['debug']??false){
+                    $info.='-------------'.date('Y-m-d H:i:s').'-response--------------'."\n";
+                    $info.= $e->getMessage()."\n";
+                    colorLog($info, 'e');
+                }
                 eventFail('MyClientProxy', [
                     'time' => microtime(true),
                     'event' => 'proxyReponse',
                     'uniqid' => $message['uniqid'],
                     'content' => 'error: '.$e->getMessage()
                 ]);
-                echo 'error: '.$e->getMessage();
+                
+
             }
             
             echo "time:".microtime(true).'-'."proxyReponse:".$message['proxy_client_id']."\n";
@@ -770,7 +792,7 @@ run(function () {
                         ]));
                 }
                     
-                echo "getStatus\n";
+
                 foreach ($httpStatusToServerClient as $k=>$http) {
                     foreach ($serverWsObjects as $serverWs) {
                         $serverWs->push(json_encode($http));
