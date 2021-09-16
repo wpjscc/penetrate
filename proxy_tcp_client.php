@@ -728,72 +728,7 @@ class MyClientProxy
             
             return ;
            
-            // $cks = $response->cookies->toResponse();
-
-            // if (!empty($cks)) {
-            //     $response->withoutHeader('Set-Cookie');
-            // }
-            // foreach ($cks as $ck) {
-            //     $response->withAddedHeader('Set-Cookie', str_replace($message['local_ip'], $message['host'], $ck));
-            // }
-
-            // if ($response->getStatusCode() == 302) {
-            // } else {
-            // }
-            
-            // if (!empty($response->getRedirectHeaders())) {
-            // }
-            // if ($method == 'POST') {
-            //     if ($response->getStatusCode()==200) {
-            //     }
-            // }
-
-            // if ($response->hasHeader('set-cookie')) {
-            // }
-            $response = '';
-            
-            try {
-                if (!$local) {
-                    $ws->push(json_encode([
-                    'event' => 'client',
-                    'data'=>[
-                        'event' =>'proxyTcpReponse',
-                        'data'=>[
-                            'content'=> base64_encode($response),
-                            'uniqid' => $message['uniqid'],
-                            'host' => $message['host']
-                        ]
-                    ]
-                ]));
-                }
-                
-                eventSuccess('MyClientProxy', [
-                    'time' => microtime(true),
-                    'event' => 'proxyTcpReponse',
-                    'uniqid' => $message['uniqid'],
-                    'content' => (string)$response
-                ]);
-                unset($httpObjects[$message['uniqid']]);
-            } catch (Exception $e) {
-                unset($httpObjects[$message['uniqid']]);
-                eventFail('MyClientProxy', [
-                    'time' => microtime(true),
-                    'event' => 'proxyTcpReponse',
-                    'uniqid' => $message['uniqid'],
-                    'content' => 'error: '.$e->getMessage()
-                ]);
-                echo 'error: '.$e->getMessage();
-            }
-            
-            echo "time:".microtime(true).'-'."proxyReponse:".$message['proxy_client_id']."\n";
-
-            // var_dump(33333);
-            if (!$local) {
-                $ws->close();
-            }
-            //  exit();
-
-            return ;
+        
         });
     }
 }
