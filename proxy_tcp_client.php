@@ -574,6 +574,7 @@ class MyClientProxy
         
         // var_dump($message['data']);
         go(function () use ($ws, $message, $local) {
+            global $config;
             global $tcpObjects;
             global $httpObjects;
             
@@ -671,6 +672,7 @@ class MyClientProxy
                                 'uniqid' => $message['uniqid'],
                                 'content' => $response
                             ]);
+                           
                             // unset($httpObjects[$message['uniqid']]);
                         } catch (Exception $e) {
                             unset($httpObjects[$message['uniqid']]);

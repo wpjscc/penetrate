@@ -714,7 +714,7 @@ class MyAppProxy
         if($response instanceof Swoole\Coroutine\Server\Connection){
             $response->close();
             var_dump($message['content']);
-            exit();
+            //exit();
         }else{
             $response->end($message['content']);
         }
