@@ -555,7 +555,6 @@ class MyClientProxy
             global $tcpObjects;
             global $httpObjects;
             
-            $httpObjects[$message['uniqid']] = 1;
             echo "time:".microtime(true).'-'."receiveTcpRequest:".$message['proxy_client_id']."\n";
 
             $content = base64_decode($message['content']);
@@ -614,6 +613,8 @@ class MyClientProxy
                         }
                     }
                     $tcpObjects[$ws->request_id] = $client;
+                    $httpObjects[$message['uniqid']] = 1;
+
                 }
                 
                 if($content){
