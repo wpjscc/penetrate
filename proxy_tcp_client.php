@@ -13,7 +13,12 @@ use Swoole\WebSocket\Frame;
 use function Swlib\Http\parse_request;
 use Swoole\Coroutine as Co;
 
-$config = require_once __DIR__ . '/client_config.php';
+if(file_exists(__DIR__ . '/client_config_self.php')){
+    $config = require_once __DIR__ . '/client_config_self.php';
+}else{
+    $config = require_once __DIR__ . '/client_config.php';
+
+}
 
 
 

@@ -37,7 +37,14 @@ $tunnelWsObjects=[];
 $httpObjects=[];
 $httpToTunnelWs=[];
 $waitGroups = [];
-$config = require_once __DIR__.'/server_config.php';
+
+
+if(file_exists(__DIR__ . '/server_config_self.php')){
+    $config = require_once __DIR__ . '/server_config_self.php';
+}else{
+    $config = require_once __DIR__ . '/server_config.php';
+
+}
 
 require_once __DIR__ . '/event_log.php';
 
