@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	_ "net/http/pprof"
+	"os"
 	"reflect"
 	"runtime"
 	"strings"
@@ -21,6 +22,8 @@ import (
 	"github.com/gobwas/ws/wsutil"
 	uuid "github.com/satori/go.uuid"
 )
+
+const maxRead = 25
 
 type Object map[string]interface{}
 
@@ -867,6 +870,67 @@ func main() {
 		}
 	}()
 
+	//todo tcp proxy
+	go func() {
+		// hostAndPort := fmt.Sprintf("%s:%s", flag.Arg(0), flag.Arg(1))
+		hostAndPort := fmt.Sprintf("%s:%s", "0.0.0.0", 9504)
+
+		listener := initServer(hostAndPort)
+		for {
+			conn, err := listener.Accept()
+			checkError(err, "Accept: ")
+			go connectionHandler(conn)
+		}
+	}()
+
 	select {}
 
+}
+
+func connectionHandler(conn net.Conn) {
+	connFrom := conn.RemoteAddr().String()
+	println("Connection from: ", connFrom)
+	// sayHello(conn)
+	for {
+		var ibuf []byte = make([]byte, maxRead+1)
+		length, err := conn.Read(ibuf[0:maxRead])
+		ibuf[maxRead] = 0 // to prevent overflow
+		switch err {
+		case nil:
+			handleMsg(length, err, ibuf)
+		case os.EAGAIN: // try again
+			continue
+		default:
+			goto DISCONNECT
+		}
+	}
+DISCONNECT:
+	err := conn.Close()
+	println("Closed connection: ", connFrom)
+	checkError(err, "Close: ")
+}
+func initServer(hostAndPort string) *net.TCPListener {
+	serverAddr, err := net.ResolveTCPAddr("tcp", hostAndPort)
+	checkError(err, "Resolving address:port failed: '"+hostAndPort+"'")
+	listener, err := net.ListenTCP("tcp", serverAddr)
+	checkError(err, "ListenTCP: ")
+	println("Listening to: ", listener.Addr().String())
+	return listener
+}
+func handleMsg(length int, err error, msg []byte) {
+	if length > 0 {
+		print("<", length, ":")
+		for i := 0; ; i++ {
+			if msg[i] == 0 {
+				break
+			}
+			fmt.Printf("%c", msg[i])
+		}
+		print(">")
+	}
+}
+func checkError(error error, info string) {
+	if error != nil {
+		panic("ERROR: " + info + " " + error.Error()) // terminate program
+	}
 }
