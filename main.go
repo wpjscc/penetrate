@@ -607,6 +607,7 @@ func (h *Hander) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					for _, config := range configs.([]interface{}) {
 						switch config.(type) {
 						case map[string]interface{}:
+							tcp_type := config.(map[string]interface{})["type"].(string)
 							local_ip := config.(map[string]interface{})["local_ip"].(string)
 							local_port := config.(map[string]interface{})["local_port"].(float64)
 							custom_domains := config.(map[string]interface{})["custom_domains"]
@@ -617,18 +618,25 @@ func (h *Hander) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							case map[string]interface{}: //关联数组
 								break
 							default: //索引数组
-								aaaaa := custom_domains.([]interface{})
-								new_custom_domains := make([]string, len(aaaaa))
-								for _, new_custom_domain := range aaaaa {
-									bbbb := new_custom_domain.(string)
-									new_custom_domains[0] = bbbb
+								if custom_domains != nil {
+									aaaaa := custom_domains.([]interface{})
+									new_custom_domains := make([]string, len(aaaaa))
+									for i, new_custom_domain := range aaaaa {
+										bbbb := new_custom_domain.(string)
+										new_custom_domains[i] = bbbb
+									}
+									// fmt.Println("tcp_type")
+									// fmt.Println(tcp_type)
+									// fmt.Println(config)
+									// fmt.Println(host)
+									// fmt.Println(new_custom_domains)
+									if local_ip != "" && local_port > 0 && In_array(host, new_custom_domains) && tcp_type == "http" {
+										myApp.createProxy(wsObject, u1, local_ip, local_port, host)
+										state = true
+										break
+									}
 								}
 
-								if local_ip != "" && local_port > 0 && In_array(host, new_custom_domains) {
-									myApp.createProxy(wsObject, u1, local_ip, local_port, host)
-									state = true
-									break
-								}
 							}
 						}
 
@@ -658,7 +666,7 @@ func (h *Hander) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case <-time.After(10 * time.Second): //超时
 		if http, ok := httpObjects[u1]; ok {
 			response := *http.Response
-			fmt.Fprint(response, "4041")
+			fmt.Fprint(response, "超时4041")
 		}
 		fmt.Println("timeout----------------------- 10")
 	}
@@ -700,17 +708,17 @@ func main() {
 			select {
 			case t := <-ticker.C:
 				fmt.Println("Tick at", t)
-				fmt.Println("wsObjects:len:", len(wsObjects))
-				fmt.Println("wsObjectConfigs:len:", len(wsObjectConfigs))
-				fmt.Println("httpObjects:len:", len(httpObjects))
-				fmt.Println("tunnelWsObjects:len:", len(tunnelWsObjects))
-				fmt.Println("tunnelWsToHttp:len:", len(tunnelWsToHttp))
-				fmt.Println("httpToTunnelWs:len:", len(httpToTunnelWs))
-				memoryGetUsage := MemoryGetUsage(true)
-				f := float64(memoryGetUsage / 1024)
-				fmt.Printf("memoryGetUsage is %f\n", f)
-				fmt.Println("wgs:len:", len(wgs))
-				fmt.Println("dones:len:", len(dones))
+				// fmt.Println("wsObjects:len:", len(wsObjects))
+				// fmt.Println("wsObjectConfigs:len:", len(wsObjectConfigs))
+				// fmt.Println("httpObjects:len:", len(httpObjects))
+				// fmt.Println("tunnelWsObjects:len:", len(tunnelWsObjects))
+				// fmt.Println("tunnelWsToHttp:len:", len(tunnelWsToHttp))
+				// fmt.Println("httpToTunnelWs:len:", len(httpToTunnelWs))
+				// memoryGetUsage := MemoryGetUsage(true)
+				// f := float64(memoryGetUsage / 1024)
+				// fmt.Printf("memoryGetUsage is %f\n", f)
+				// fmt.Println("wgs:len:", len(wgs))
+				// fmt.Println("dones:len:", len(dones))
 				// debug.FreeOSMemory()
 			}
 		}
