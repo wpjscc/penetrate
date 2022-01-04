@@ -15,8 +15,13 @@ use Swoole\Coroutine as Co;
 
 
 
-$config = require_once __DIR__ . '/client_config.php';
+// $config = require_once __DIR__ . '/client_config.php';
+if(file_exists(__DIR__ . '/client_config_self.php')){
+    $config = require_once __DIR__ . '/client_config_self.php';
+}else{
+    $config = require_once __DIR__ . '/client_config.php';
 
+}
 
 
 ini_set('date.timezone', 'Asia/Shanghai');
@@ -338,7 +343,7 @@ class MyClientProxy
                             'data'=>[
                                 'request_id'=>$message['request_id'],
                                 'uniqid'=>$message['uniqid'],
-                                'content'=> "Local proxyException. Error:".$e->getMessage()
+                                'content'=> "Local proxyException. Error:".$e->getMessage().':'.$uri
                             ]
                            
                         ]

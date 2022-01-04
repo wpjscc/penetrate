@@ -4,7 +4,7 @@ $prefix = uniqid();
 $domain = "{$prefix}.test.wpjs.cc";
 
 $local_ip = '127.0.0.1';//可以监听任何ip，这里默认本地
-$local_port = 10080;//只需换成你自己的端口即可
+$local_port = 8001;//只需换成你自己的端口即可
 
 //下方不用改
 
